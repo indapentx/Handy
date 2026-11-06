@@ -5,7 +5,7 @@ const SPEEDS = [0.5, 0.6, 0.65, 0.7, 0.8, 0.9, 1];
 const DEFAULT_SPEED = 0.65;
 const SETTINGS_VERSION = 2; // 2: default speed became 0.65×
 const SIZES = [['s', 'S'], ['m', 'M'], ['l', 'L']];
-const STYLES = [['apple', 'Apple'], ['classic', 'Classic'], ['outline', 'Outline']];
+const STYLES = [['apple', 'Apple'], ['classic', 'Classic'], ['outline', 'Outline'], ['iphone', 'iPhone']];
 const MODES = ['one', 'two', 'both', 'off'];
 const HOLD_SECONDS = 2; // a line stays on screen if you pause up to 2 s after it ended
 const RESUME_REWIND = 2; // when continuing a video, start 2 s before where you stopped
@@ -164,6 +164,7 @@ function afterTracksChanged() {
   if (current) saveSubtitles(current.id, tracks);
   renderSubtitleButton();
   renderSubs();
+  syncNativeCaptions();
   if (!subsSheet.hidden) renderSubsSheet();
 }
 
@@ -258,6 +259,7 @@ function openVideo(file, newTracks, input) {
   player.classList.add('paused', 'fresh');
   renderSubtitleButton();
   renderSubs();
+  syncNativeCaptions();
   updateControls();
   keepScreenOn(true);
 
@@ -276,6 +278,7 @@ function closeVideo() {
   current.input?.remove();
   current = null;
   tracks = [];
+  syncNativeCaptions();
 }
 
 function goHome() {
@@ -306,6 +309,7 @@ function pauseNow() {
   player.classList.add('paused');
   renderSubs();
   fitSubs(); // the controls take room while paused
+  adjustNativeForPause();
   updateControls();
 }
 
@@ -351,12 +355,14 @@ video.addEventListener('play', () => {
   player.classList.remove('paused', 'fresh');
   closeSheets();
   fitSubs();
+  releaseNativeAdjustments();
   startLoop();
 });
 video.addEventListener('pause', () => {
   player.classList.add('paused');
   renderSubs();
   fitSubs();
+  adjustNativeForPause();
   updateControls();
   savePosition();
 });
@@ -366,6 +372,7 @@ video.addEventListener('ended', () => {
 });
 video.addEventListener('seeked', () => {
   renderSubs();
+  if (video.paused) adjustNativeForPause();
   updateControls();
 });
 video.addEventListener('timeupdate', () => {
@@ -492,7 +499,142 @@ function fitSubs() {
     subsEl.style.setProperty('--fit', Math.max(0.4, fit * Math.sqrt(room / needed) * 0.97).toFixed(3));
   }
 }
-window.addEventListener('resize', fitSubs);
+window.addEventListener('resize', () => {
+  fitSubs();
+  if (video.paused) adjustNativeForPause();
+});
+
+// ---------- "iPhone" style: Safari draws the subtitles itself ----------
+// The subtitles go to the video as a native text track, so Safari draws them with the look
+// chosen in Settings → Accessibility → Subtitles & Captioning. Both languages are merged into
+// one cue (second language in italics). While paused, a line that ended up to 2 s ago is kept
+// on screen by stretching its end time, and in landscape the cue moves up above the controls.
+
+const usesNativeCaptions = () => settings.style === 'iphone' && typeof VTTCue !== 'undefined';
+const canAlignLineEnd = typeof VTTCue !== 'undefined' && 'lineAlign' in VTTCue.prototype; // Safari 14.5+
+let nativeTrack = null;
+let nativeSegs = []; // { start, end, text } for each native cue, in time order
+let nativeCues = []; // the VTTCue objects, same order as nativeSegs
+let nativeHeld = null; // { cue, end }: a cue stretched to stay on screen while paused
+let nativeRaised = []; // cues moved up above the controls while paused
+
+const vttEscape = (s) => s.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
+
+// The merged cue text at time t: first language on top, second in italics underneath.
+function mergedText(first, second, t, hold = 0) {
+  const top = cuesForDisplay(first, t, hold).map((j) => first[j].text).join('\n');
+  const bottom = cuesForDisplay(second, t, hold).map((j) => second[j].text).join('\n');
+  return [top && vttEscape(top), bottom && `<i>${vttEscape(bottom)}</i>`].filter(Boolean).join('\n');
+}
+
+function buildNativeSegments(order) {
+  if (!order.length) return [];
+  if (order.length === 1) {
+    return tracks[order[0]].cues.map((c) => ({ start: c.start, end: c.end, text: vttEscape(c.text) }));
+  }
+  // Both languages: cut the timeline at every start and end of either file, so each moment
+  // shows exactly what each file has on screen then.
+  const [first, second] = order.map((i) => tracks[i].cues);
+  const times = [...new Set([...first, ...second].flatMap((c) => [c.start, c.end]))].sort((x, y) => x - y);
+  const segs = [];
+  for (let i = 0; i < times.length - 1; i++) {
+    const start = times[i];
+    const end = times[i + 1];
+    if (end - start < 0.01) continue;
+    const text = mergedText(first, second, (start + end) / 2);
+    if (!text) continue;
+    const prev = segs[segs.length - 1];
+    if (prev && prev.text === text && Math.abs(prev.end - start) < 0.001) prev.end = end;
+    else segs.push({ start, end, text });
+  }
+  return segs;
+}
+
+function syncNativeCaptions() {
+  releaseNativeAdjustments();
+  if (!usesNativeCaptions() || !current) {
+    if (nativeTrack) nativeTrack.mode = 'disabled';
+    nativeSegs = [];
+    nativeCues = [];
+    return;
+  }
+  if (!nativeTrack || !Array.from(video.textTracks).includes(nativeTrack)) {
+    nativeTrack = video.addTextTrack('subtitles', 'Handy', tracks[0]?.lang || 'de');
+  }
+  nativeTrack.mode = 'hidden'; // cues can only be read and changed while not disabled
+  const old = nativeTrack.cues;
+  for (let i = old.length - 1; i >= 0; i--) nativeTrack.removeCue(old[i]);
+  nativeSegs = buildNativeSegments(visibleTracks());
+  nativeCues = nativeSegs.map((s) => new VTTCue(s.start, s.end, s.text));
+  for (const cue of nativeCues) nativeTrack.addCue(cue);
+  nativeTrack.mode = 'showing';
+  if (video.paused) adjustNativeForPause();
+}
+
+function releaseNativeAdjustments() {
+  if (nativeHeld) {
+    const { cue, end, text } = nativeHeld;
+    cue.endTime = end;
+    if (cue.text !== text) cue.text = text;
+    nativeHeld = null;
+  }
+  for (const cue of nativeRaised) {
+    cue.snapToLines = true;
+    try {
+      cue.line = 'auto';
+    } catch {
+      cue.line = -1;
+    }
+    if (canAlignLineEnd) cue.lineAlign = 'start';
+  }
+  nativeRaised = [];
+}
+
+function adjustNativeForPause() {
+  releaseNativeAdjustments();
+  if (!nativeCues.length || !video.paused) return;
+  const t = video.currentTime;
+  const order = visibleTracks();
+  let onScreen = cuesForDisplay(nativeSegs, t, HOLD_SECONDS);
+  if (order.length === 2 && onScreen.length) {
+    // Both languages share one cue (segments never overlap: this is the one on screen, or the one
+    // that just ended). Show each language as Handy's own layer would, each with its own hold.
+    const i = onScreen[onScreen.length - 1];
+    onScreen = [i];
+    const cue = nativeCues[i];
+    nativeHeld = { cue, end: cue.endTime, text: cue.text };
+    const [first, second] = order.map((k) => tracks[k].cues);
+    const text = mergedText(first, second, t, HOLD_SECONDS);
+    if (text && text !== cue.text) cue.text = text;
+    if (cue.endTime <= t) cue.endTime = t + 0.25;
+  } else {
+    for (const i of onScreen) {
+      const cue = nativeCues[i];
+      if (cue.endTime <= t) {
+        nativeHeld = { cue, end: cue.endTime, text: cue.text };
+        cue.endTime = t + 0.25;
+      }
+    }
+  }
+  if (portrait.matches || player.classList.contains('locked')) return;
+  // Landscape: the paused controls cover the bottom of the video, so lift the cue above them.
+  const box = video.getBoundingClientRect();
+  const controlsTop = document.querySelector('.seek-row').getBoundingClientRect().top - 8;
+  const free = Math.min(100, Math.max(20, ((controlsTop - box.top) / box.height) * 100));
+  for (const i of onScreen) {
+    const cue = nativeCues[i];
+    if (canAlignLineEnd) {
+      cue.snapToLines = false;
+      cue.lineAlign = 'end';
+      cue.line = free;
+    } else {
+      // No lineAlign (Chrome): count caption lines up from the bottom, each about 6% of the height.
+      cue.snapToLines = true;
+      cue.line = -(Math.ceil((100 - free) / 6) + 1);
+    }
+    nativeRaised.push(cue);
+  }
+}
 
 function renderProgress() {
   const d = video.duration;
@@ -539,6 +681,7 @@ function setMode(mode) {
   saveSettings();
   renderSubtitleButton();
   renderSubs();
+  syncNativeCaptions();
   if (!subsSheet.hidden) renderSubsSheet();
 }
 
@@ -615,9 +758,13 @@ function renderSubsSheet() {
       saveSettings();
       renderSubtitleButton();
       fitSubs();
+      syncNativeCaptions();
       renderSubsSheet();
     })),
   );
+  // With the iPhone style, font, size and colours come from the device's subtitle settings.
+  $('iphoneHint').hidden = settings.style !== 'iphone';
+  $('sizeGroup').hidden = settings.style === 'iphone';
   $('sizeChoices').replaceChildren(
     ...SIZES.map(([value, label]) => choiceButton(label, settings.size === value, () => {
       settings.size = value;
@@ -732,6 +879,7 @@ function setLocked(on, announce = true) {
   lockBtn.setAttribute('aria-label', on ? 'Hold to show controls' : 'Hide controls');
   closeSheets();
   fitSubs();
+  if (video.paused) adjustNativeForPause();
   if (on && announce) toast('Controls hidden. Hold the lock button to bring them back.');
 }
 

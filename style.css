@@ -220,6 +220,10 @@ kbd {
 }
 #player[data-style="outline"] #line2 { font-weight: 500; }
 #player[data-style="outline"] .line span { display: inline; background: none; padding: 0; border-radius: 0; }
+
+/* "iphone": Safari draws the subtitles itself (native text track), so Handy's own layer is off. */
+#player[data-style="iphone"] #subs { display: none; }
+#iphoneHint { margin: -4px 0 12px; }
 .line.long { --k: 0.9; }
 #line2.long { --k: 0.8; }
 .line.xlong { --k: 0.8; max-width: 94%; }
