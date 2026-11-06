@@ -1,6 +1,6 @@
 // Keeps a copy of the app so it opens without internet (videos are local files anyway).
 // Network first, so updates arrive right away; the copy is used when offline or slow.
-const CACHE = 'handy-v3';
+const CACHE = 'handy-v4';
 const FILES = [
   './',
   './index.html',
@@ -14,7 +14,9 @@ const FILES = [
 ];
 
 self.addEventListener('install', (event) => {
-  event.waitUntil(caches.open(CACHE).then((cache) => cache.addAll(FILES)).then(() => self.skipWaiting()));
+  // cache: 'reload' skips the browser's HTTP cache, so a new version never stores old files.
+  const requests = FILES.map((file) => new Request(file, { cache: 'reload' }));
+  event.waitUntil(caches.open(CACHE).then((cache) => cache.addAll(requests)).then(() => self.skipWaiting()));
 });
 
 self.addEventListener('activate', (event) => {
@@ -34,7 +36,9 @@ self.addEventListener('fetch', (event) => {
 
 async function networkFirst(request) {
   const cache = await caches.open(CACHE);
-  const fromNetwork = fetch(request).then((response) => {
+  // cache: 'no-cache' always asks the server whether the file changed (GitHub Pages lets
+  // browsers keep files for 10 minutes otherwise); unchanged files cost a tiny 304 reply.
+  const fromNetwork = fetch(request.url, { cache: 'no-cache' }).then((response) => {
     if (response.status === 200) cache.put(request, response.clone()).catch(() => {});
     return response;
   });

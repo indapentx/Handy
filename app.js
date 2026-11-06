@@ -303,6 +303,7 @@ function pauseNow() {
   video.pause();
   player.classList.add('paused');
   renderSubs();
+  fitSubs(); // the controls take room while paused
   updateControls();
 }
 
@@ -347,11 +348,13 @@ if ('webkitPreservesPitch' in video) video.webkitPreservesPitch = true;
 video.addEventListener('play', () => {
   player.classList.remove('paused', 'fresh');
   closeSheets();
+  fitSubs();
   startLoop();
 });
 video.addEventListener('pause', () => {
   player.classList.add('paused');
   renderSubs();
+  fitSubs();
   updateControls();
   savePosition();
 });
@@ -427,6 +430,7 @@ function renderSubs() {
   const t = video.currentTime || 0;
   const hold = video.paused ? HOLD_SECONDS : 0;
   const order = visibleTracks();
+  let changed = false;
   for (let slot = 0; slot < 2; slot++) {
     const index = order[slot];
     const track = tracks[index];
@@ -434,6 +438,7 @@ function renderSubs() {
     const key = track ? String(index) : '';
     if (text === shown[slot].text && key === shown[slot].track) continue;
     shown[slot] = { text, track: key };
+    changed = true;
     const el = lineEls[slot];
     el.dataset.track = key;
     el.firstElementChild.textContent = text;
@@ -441,7 +446,51 @@ function renderSubs() {
     el.classList.toggle('long', text.length > 140);
     el.classList.toggle('xlong', text.length > 240);
   }
+  if (changed) fitSubs();
 }
+
+// Very long cues at big sizes could run off the screen. Only those get shrunk, just enough to
+// fit between the top of the screen (or the top bar while paused) and the bottom controls.
+const subsEl = $('subs');
+const portrait = matchMedia('(orientation: portrait)');
+
+function linesBox() {
+  let top = Infinity;
+  let bottom = -Infinity;
+  for (const el of lineEls) {
+    if (el.hidden) continue;
+    const r = el.getBoundingClientRect();
+    top = Math.min(top, r.top);
+    bottom = Math.max(bottom, r.bottom);
+  }
+  return top < bottom ? { top, bottom } : null;
+}
+
+function roomFor(box) {
+  if (portrait.matches) {
+    // Subtitles hang below the video and must stay above the space kept for the controls.
+    const stage = $('stage');
+    return stage.getBoundingClientRect().bottom - parseFloat(getComputedStyle(stage).paddingBottom) - box.top;
+  }
+  // Subtitles sit on the bottom of the video and grow upwards.
+  const topBarShown = player.classList.contains('paused') && !player.classList.contains('locked');
+  const limit = topBarShown ? document.querySelector('.controls.top').getBoundingClientRect().bottom - 16 : 8;
+  return box.bottom - limit;
+}
+
+function fitSubs() {
+  subsEl.style.setProperty('--fit', '1');
+  for (let pass = 0; pass < 2; pass++) {
+    const box = linesBox();
+    if (!box) return;
+    const needed = box.bottom - box.top;
+    const room = roomFor(box);
+    if (needed <= room) return;
+    const fit = Number(subsEl.style.getPropertyValue('--fit')) || 1;
+    subsEl.style.setProperty('--fit', Math.max(0.4, fit * Math.sqrt(room / needed) * 0.97).toFixed(3));
+  }
+}
+window.addEventListener('resize', fitSubs);
 
 function renderProgress() {
   const d = video.duration;
@@ -562,6 +611,7 @@ function renderSubsSheet() {
       settings.size = value;
       saveSettings();
       renderSubtitleButton();
+      fitSubs();
       renderSubsSheet();
     })),
   );
@@ -669,6 +719,7 @@ function setLocked(on, announce = true) {
   player.classList.toggle('locked', on);
   lockBtn.setAttribute('aria-label', on ? 'Hold to show controls' : 'Hide controls');
   closeSheets();
+  fitSubs();
   if (on && announce) toast('Controls hidden. Hold the lock button to bring them back.');
 }
 
