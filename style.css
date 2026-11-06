@@ -270,7 +270,7 @@ kbd {
   display: flex;
   align-items: center;
   gap: 6px;
-  padding: calc(env(safe-area-inset-top) + 6px) calc(env(safe-area-inset-right) + 14px) 22px calc(env(safe-area-inset-left) + 6px);
+  padding: calc(env(safe-area-inset-top) + 6px) calc(env(safe-area-inset-right) + 60px) 22px calc(env(safe-area-inset-left) + 6px);
   background: linear-gradient(rgba(0, 0, 0, 0.72), transparent);
 }
 .title { min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; font-weight: 600; font-size: 15px; }
@@ -359,6 +359,28 @@ kbd {
 #seek::-moz-range-progress { height: 4px; border-radius: 2px; background: var(--accent); }
 #seek::-moz-range-thumb { width: 18px; height: 18px; border: 0; border-radius: 50%; background: #fff; }
 #seek:disabled { opacity: 0.4; }
+
+/* Hide-controls button: shows with the controls while paused; once locked it is the only thing
+   left on screen (dimmed), and holding it brings the controls back. */
+#lockBtn {
+  position: absolute;
+  z-index: 4;
+  top: calc(env(safe-area-inset-top) + 6px);
+  right: calc(env(safe-area-inset-right) + 8px);
+  background: rgba(0, 0, 0, 0.35);
+  opacity: 0;
+  visibility: hidden;
+  touch-action: manipulation;
+  transition: opacity 0.12s ease, visibility 0s linear 0.12s;
+}
+#player.paused #lockBtn { opacity: 1; visibility: visible; transition: opacity 0.12s ease; }
+#player.locked #lockBtn { opacity: 0.4; visibility: visible; transition: none; }
+#player.locked #lockBtn.holding { opacity: 1; background: rgba(255, 209, 102, 0.5); transition: background 0.6s linear; }
+#lockBtn .lock-on, #player.locked #lockBtn .lock-off { display: none; }
+#player.locked #lockBtn .lock-on { display: block; }
+#player.ui-locked:not(.locked) #lockBtn { pointer-events: none; }
+#player.locked .controls, #player.locked .sheet, #player.locked #bigPlay, #player.locked #progressLine { display: none !important; }
+#player.paused.locked #subs { bottom: calc(max(14px, env(safe-area-inset-bottom)) + 3vh); }
 
 /* Menus (speed, subtitles) open above the bottom bar. */
 .sheet {

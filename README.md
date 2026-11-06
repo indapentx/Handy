@@ -10,7 +10,8 @@ Your videos and subtitles are opened straight from your device and never uploade
 
 1. Tap **Open video + subtitles** and select the video and its `.srt` file together. You can add a second `.srt` too.
 2. Touch anywhere on the video to pause. Tap again to play.
-3. While paused you get the seek bar, −5 s / +5 s, speed (0.5× to 1×) and **CC**. CC shows one subtitle file, both at once, or none, and sets the text size.
+3. While paused you get the seek bar, −5 s / +5 s, speed (0.5× to 1×, starting at 0.65×) and **CC**. CC shows one subtitle file, both at once, or none, and sets the text size.
+4. The eye button at the top right hides every control, even while paused, so only the video and subtitles are left. Tapping still pauses and plays. **Hold** the dimmed lock button for a moment to bring the controls back.
 
 If you pause just after a line has ended, it stays on screen for 2 seconds so you can still read it.
 
@@ -30,6 +31,7 @@ Handy remembers your place and the subtitles for every video. When you pick the 
 | S | Switch subtitles (first, second, both, off) |
 | , and . | Slower / faster |
 | F | Full screen |
+| L | Hide / show the controls |
 
 You can also drag the video and `.srt` files onto the page.
 

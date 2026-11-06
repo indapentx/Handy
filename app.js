@@ -1,7 +1,9 @@
 // Handy: a video player for language learners. Touch anywhere on the video to pause.
 import { LANGUAGE_NAMES, cuesForDisplay, decodeSubtitleBytes, guessLanguage, parseSubtitles } from './srt.js';
 
-const SPEEDS = [0.5, 0.6, 0.7, 0.8, 0.9, 1];
+const SPEEDS = [0.5, 0.6, 0.65, 0.7, 0.8, 0.9, 1];
+const DEFAULT_SPEED = 0.65;
+const SETTINGS_VERSION = 2; // 2: default speed became 0.65×
 const SIZES = [['s', 'S'], ['m', 'M'], ['l', 'L']];
 const MODES = ['one', 'two', 'both', 'off'];
 const HOLD_SECONDS = 2; // a line stays on screen if you pause up to 2 s after it ended
@@ -51,11 +53,18 @@ const store = {
   },
 };
 
-const settings = { speed: 1, mode: 'one', size: 'm', ...store.get('settings', {}) };
-if (!SPEEDS.includes(settings.speed)) settings.speed = 1;
+const storedSettings = store.get('settings', {});
+const settings = { speed: DEFAULT_SPEED, mode: 'one', size: 'm', ...storedSettings };
+if (!SPEEDS.includes(settings.speed)) settings.speed = DEFAULT_SPEED;
 if (!MODES.includes(settings.mode)) settings.mode = 'one';
 if (!SIZES.some(([value]) => value === settings.size)) settings.size = 'm';
 const saveSettings = () => store.set('settings', settings);
+if (storedSettings.v !== SETTINGS_VERSION) {
+  // Settings saved by the first version start at the new default speed.
+  settings.speed = DEFAULT_SPEED;
+  settings.v = SETTINGS_VERSION;
+  saveSettings();
+}
 
 function recentVideos() {
   const list = store.get('recent', []);
@@ -271,6 +280,7 @@ function goHome() {
   closeVideo();
   closeSheets();
   hideNotice();
+  setLocked(false);
   exitFullscreen();
   keepScreenOn(false);
   player.hidden = true;
@@ -641,7 +651,53 @@ player.addEventListener('click', (e) => {
 }, true);
 
 player.addEventListener('contextmenu', (e) => {
-  if (!isControl(e.target)) e.preventDefault();
+  if (!isControl(e.target) || e.target.closest('#lockBtn')) e.preventDefault();
+});
+
+// ---------- hide-controls lock ----------
+// Tap the eye button to hide every control, even while paused. Tapping anywhere still pauses and
+// plays, the lock button included. Holding the lock button for 0.6 s brings the controls back.
+
+const lockBtn = $('lockBtn');
+const HOLD_TO_UNLOCK_MS = 600;
+let holdTimer = 0;
+let unlockedByHold = false;
+let lockDownWasPaused = false;
+const isLocked = () => player.classList.contains('locked');
+
+function setLocked(on, announce = true) {
+  player.classList.toggle('locked', on);
+  lockBtn.setAttribute('aria-label', on ? 'Hold to show controls' : 'Hide controls');
+  closeSheets();
+  if (on && announce) toast('Controls hidden. Hold the lock button to bring them back.');
+}
+
+lockBtn.addEventListener('pointerdown', (e) => {
+  if (!isLocked() || !e.isPrimary) return;
+  lockDownWasPaused = video.paused || video.ended;
+  if (!lockDownWasPaused) pauseNow(); // same instant pause as anywhere else
+  lockBtn.classList.add('holding');
+  clearTimeout(holdTimer);
+  holdTimer = setTimeout(() => {
+    unlockedByHold = true;
+    lockBtn.classList.remove('holding');
+    setLocked(false);
+  }, HOLD_TO_UNLOCK_MS);
+});
+
+const endHold = () => {
+  clearTimeout(holdTimer);
+  lockBtn.classList.remove('holding');
+};
+for (const type of ['pointerup', 'pointercancel', 'pointerleave']) lockBtn.addEventListener(type, endHold);
+
+lockBtn.addEventListener('click', () => {
+  if (unlockedByHold) {
+    unlockedByHold = false;
+    return;
+  }
+  if (!isLocked()) setLocked(true);
+  else if (lockDownWasPaused) playNow();
 });
 
 // ---------- buttons, slider and keys ----------
@@ -710,6 +766,10 @@ document.addEventListener('keydown', (e) => {
     case '.':
     case '>':
       stepSpeed(1);
+      break;
+    case 'l':
+    case 'L':
+      setLocked(!isLocked());
       break;
     case 'Escape':
       closeSheets();
