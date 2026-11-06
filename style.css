@@ -8,7 +8,7 @@
   --accent: #ffd166;
   --accent-ink: #1c1500;
   --sub-1: #ffffff;
-  --sub-2: #ffd166;
+  --sub-2: #d5dae2;
   --controls-h: 108px;
   color-scheme: dark;
 }
@@ -149,14 +149,15 @@ kbd {
   z-index: 10;
   background: #000;
   overflow: hidden;
-  --sub-size: clamp(18px, 4.6vmin, 40px);
+  --sub-size: clamp(19px, 5.2vmin, 46px);
+  --subs-rest: calc(max(12px, env(safe-area-inset-bottom)) + 5vh);
   -webkit-user-select: none;
   user-select: none;
   -webkit-touch-callout: none;
   -webkit-tap-highlight-color: transparent;
 }
-#player[data-size="s"] { --sub-size: clamp(15px, 3.8vmin, 32px); }
-#player[data-size="l"] { --sub-size: clamp(22px, 5.8vmin, 52px); }
+#player[data-size="s"] { --sub-size: clamp(16px, 4.3vmin, 38px); }
+#player[data-size="l"] { --sub-size: clamp(22px, 6.3vmin, 56px); }
 
 /* The whole stage is the tap target; nothing inside it takes pointer events. */
 #stage { position: absolute; inset: 0; touch-action: none; }
@@ -168,41 +169,43 @@ kbd {
   position: absolute;
   left: 0;
   right: 0;
-  bottom: calc(max(14px, env(safe-area-inset-bottom)) + 3vh);
+  bottom: var(--subs-rest);
   display: flex;
   flex-direction: column;
   align-items: center;
-  gap: 0.35em;
+  gap: 0.3em;
   padding: 0 max(12px, env(safe-area-inset-left)) 0 max(12px, env(safe-area-inset-right));
   font-size: var(--sub-size);
   pointer-events: none;
 }
 #player.paused #subs { bottom: calc(var(--controls-h) + env(safe-area-inset-bottom) + 6px); }
 
+/* Subtitles in the Apple TV / Netflix look: Apple's system font (SF Pro on iPhone and Mac),
+   semibold white, no box, and a layered shadow (crisp edge + soft halo) for bright scenes. */
 .line {
   --k: 1;
+  font-family: -apple-system, BlinkMacSystemFont, "SF Pro Text", "Helvetica Neue", "Segoe UI", Roboto, Arial, sans-serif;
   font-size: calc(var(--k) * 1em);
-  max-width: min(92%, 36em);
-  text-align: center;
-  line-height: 1.4;
   font-weight: 600;
+  line-height: 1.24;
+  letter-spacing: 0.005em;
+  max-width: min(90%, 32em);
+  text-align: center;
   white-space: pre-line;
-}
-.line span {
   color: var(--sub-1);
-  background: rgba(0, 0, 0, 0.66);
-  padding: 0.06em 0.36em;
-  border-radius: 0.22em;
-  -webkit-box-decoration-break: clone;
-  box-decoration-break: clone;
-  text-shadow: 0 1px 2px rgba(0, 0, 0, 0.6);
+  -webkit-font-smoothing: antialiased;
+  text-shadow:
+    0 0 2px rgba(0, 0, 0, 0.95),
+    0 0 2px rgba(0, 0, 0, 0.95),
+    0 1px 3px rgba(0, 0, 0, 0.9),
+    0 0 12px rgba(0, 0, 0, 0.55);
 }
-.line[data-track="1"] span { color: var(--sub-2); }
-#line2 { --k: 0.9; }
+.line[data-track="1"] { color: var(--sub-2); }
+#line2 { --k: 0.86; font-weight: 500; }
 .line.long { --k: 0.9; }
-#line2.long { --k: 0.82; }
-.line.xlong { --k: 0.8; max-width: 96%; }
-#line2.xlong { --k: 0.74; }
+#line2.long { --k: 0.8; }
+.line.xlong { --k: 0.8; max-width: 94%; }
+#line2.xlong { --k: 0.72; }
 
 #bigPlay {
   position: absolute;
@@ -380,7 +383,7 @@ kbd {
 #player.locked #lockBtn .lock-on { display: block; }
 #player.ui-locked:not(.locked) #lockBtn { pointer-events: none; }
 #player.locked .controls, #player.locked .sheet, #player.locked #bigPlay, #player.locked #progressLine { display: none !important; }
-#player.paused.locked #subs { bottom: calc(max(14px, env(safe-area-inset-bottom)) + 3vh); }
+#player.paused.locked #subs { bottom: var(--subs-rest); }
 
 /* Menus (speed, subtitles) open above the bottom bar. */
 .sheet {
