@@ -262,19 +262,6 @@ kbd {
 #player.fresh #bigPlay span { display: block; }
 #player.sheet-open #bigPlay, #player.has-notice #bigPlay { opacity: 0; }
 
-#progressLine {
-  position: absolute;
-  left: 0;
-  right: 0;
-  bottom: 0;
-  height: 3px;
-  background: rgba(255, 255, 255, 0.12);
-  pointer-events: none;
-  transition: opacity 0.12s;
-}
-#progressFill { height: 100%; background: rgba(255, 209, 102, 0.85); transform-origin: left center; transform: scaleX(0); }
-#player.paused #progressLine { opacity: 0; }
-
 /* Controls show only while paused. The bars let taps through; only their buttons are clickable. */
 .controls {
   position: absolute;
@@ -404,7 +391,7 @@ kbd {
 #lockBtn .lock-on, #player.locked #lockBtn .lock-off { display: none; }
 #player.locked #lockBtn .lock-on { display: block; }
 #player.ui-locked:not(.locked) #lockBtn { pointer-events: none; }
-#player.locked .controls, #player.locked .sheet, #player.locked #bigPlay, #player.locked #progressLine { display: none !important; }
+#player.locked .controls, #player.locked .sheet, #player.locked #bigPlay { display: none !important; }
 #player.paused.locked #subs { bottom: var(--subs-rest); }
 
 /* Menus (speed, subtitles) open above the bottom bar. */

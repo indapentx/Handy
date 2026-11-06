@@ -419,7 +419,6 @@ video.addEventListener('error', () => {
 function frame() {
   rafId = 0;
   renderSubs();
-  renderProgress();
   if (!video.paused && !video.ended) rafId = requestAnimationFrame(frame);
 }
 
@@ -636,12 +635,6 @@ function adjustNativeForPause() {
   }
 }
 
-function renderProgress() {
-  const d = video.duration;
-  const p = Number.isFinite(d) && d > 0 ? Math.min(1, video.currentTime / d) : 0;
-  $('progressFill').style.transform = `scaleX(${p})`;
-}
-
 function updateControls() {
   const d = Number.isFinite(video.duration) ? video.duration : 0;
   const t = video.currentTime || 0;
@@ -652,7 +645,6 @@ function updateControls() {
   $('timeNow').textContent = formatTime(t);
   $('timeTotal').textContent = d ? formatTime(d) : '--:--';
   $('speedBtn').textContent = `${settings.speed}×`;
-  renderProgress();
 }
 
 function formatTime(seconds) {
