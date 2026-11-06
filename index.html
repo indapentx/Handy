@@ -47,7 +47,7 @@
         <ul>
           <li>Touch anywhere on the video to pause. Tap again to play.</li>
           <li>While paused you get the seek bar, −5 s / +5 s, speed and subtitles (CC).</li>
-          <li>CC shows one subtitle file, both at once, or none.</li>
+          <li>CC shows one subtitle file, both at once, or none, and sets the subtitle style (Apple, Classic, Outline) and size.</li>
           <li>The eye button (top right, while paused) hides all controls, even when paused. Tapping still pauses and plays. Hold the lock button for a moment to bring the controls back.</li>
           <li>Your place and subtitles are remembered for each video.</li>
           <li>On iPhone, keep the videos and .srt files in an iCloud Drive folder so they show up in the Files app.</li>
@@ -66,7 +66,7 @@
     </div>
   </main>
 
-  <section id="player" hidden data-size="m">
+  <section id="player" hidden data-size="m" data-style="apple">
     <div id="stage">
       <div id="frame">
         <video id="video" playsinline webkit-playsinline preload="auto"></video>
@@ -118,13 +118,19 @@
     </div>
 
     <div id="subsSheet" class="sheet" role="dialog" aria-label="Subtitles" hidden>
-      <h3>Show</h3>
-      <p id="noSubs" class="muted small">No subtitles loaded for this video.</p>
-      <div id="modeChoices" class="choices"></div>
-      <ul id="trackList"></ul>
-      <button id="addSubsBtn" class="btn-secondary" type="button">Load subtitle file…</button>
-      <h3>Size</h3>
-      <div id="sizeChoices" class="choices"></div>
+      <div class="sheet-col">
+        <h3>Show</h3>
+        <p id="noSubs" class="muted small">No subtitles loaded for this video.</p>
+        <div id="modeChoices" class="choices"></div>
+        <ul id="trackList"></ul>
+        <button id="addSubsBtn" class="btn-secondary" type="button">Load subtitle file…</button>
+      </div>
+      <div class="sheet-col">
+        <h3>Style</h3>
+        <div id="styleChoices" class="choices"></div>
+        <h3>Size</h3>
+        <div id="sizeChoices" class="choices"></div>
+      </div>
     </div>
 
     <div id="notice" role="alert" hidden>

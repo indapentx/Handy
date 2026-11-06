@@ -5,6 +5,7 @@ const SPEEDS = [0.5, 0.6, 0.65, 0.7, 0.8, 0.9, 1];
 const DEFAULT_SPEED = 0.65;
 const SETTINGS_VERSION = 2; // 2: default speed became 0.65×
 const SIZES = [['s', 'S'], ['m', 'M'], ['l', 'L']];
+const STYLES = [['apple', 'Apple'], ['classic', 'Classic'], ['outline', 'Outline']];
 const MODES = ['one', 'two', 'both', 'off'];
 const HOLD_SECONDS = 2; // a line stays on screen if you pause up to 2 s after it ended
 const RESUME_REWIND = 2; // when continuing a video, start 2 s before where you stopped
@@ -54,10 +55,11 @@ const store = {
 };
 
 const storedSettings = store.get('settings', {});
-const settings = { speed: DEFAULT_SPEED, mode: 'one', size: 'm', ...storedSettings };
+const settings = { speed: DEFAULT_SPEED, mode: 'one', size: 'm', style: 'apple', ...storedSettings };
 if (!SPEEDS.includes(settings.speed)) settings.speed = DEFAULT_SPEED;
 if (!MODES.includes(settings.mode)) settings.mode = 'one';
 if (!SIZES.some(([value]) => value === settings.size)) settings.size = 'm';
+if (!STYLES.some(([value]) => value === settings.style)) settings.style = 'apple';
 const saveSettings = () => store.set('settings', settings);
 if (storedSettings.v !== SETTINGS_VERSION) {
   // Settings saved by the first version start at the new default speed.
@@ -561,6 +563,7 @@ function renderSubtitleButton() {
   $('ccLabel').textContent = label;
   $('ccBtn').classList.toggle('dim', mode === 'off');
   player.dataset.size = settings.size;
+  player.dataset.style = settings.style;
 }
 
 function choiceButton(label, pressed, onClick) {
@@ -606,6 +609,15 @@ function renderSubsSheet() {
     }),
   );
   $('addSubsBtn').textContent = tracks.length >= 2 ? 'Replace subtitle files…' : tracks.length ? 'Add a second subtitle file…' : 'Load subtitle file…';
+  $('styleChoices').replaceChildren(
+    ...STYLES.map(([value, label]) => choiceButton(label, settings.style === value, () => {
+      settings.style = value;
+      saveSettings();
+      renderSubtitleButton();
+      fitSubs();
+      renderSubsSheet();
+    })),
+  );
   $('sizeChoices').replaceChildren(
     ...SIZES.map(([value, label]) => choiceButton(label, settings.size === value, () => {
       settings.size = value;

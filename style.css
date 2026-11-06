@@ -180,28 +180,46 @@ kbd {
 }
 #player.paused #subs { bottom: calc(var(--controls-h) + env(safe-area-inset-bottom) + 6px); }
 
-/* Subtitles in the Apple TV / Netflix look: Apple's system font (SF Pro on iPhone and Mac),
-   semibold white, no box, and a layered shadow (crisp edge + soft halo) for bright scenes. */
+/* Subtitle styles (CC menu → Style). Default "apple" copies the iPhone's own caption style:
+   regular SF Pro, white, on one rounded see-through dark box per subtitle. */
 .line {
   --k: 1;
   font-family: -apple-system, BlinkMacSystemFont, "SF Pro Text", "Helvetica Neue", "Segoe UI", Roboto, Arial, sans-serif;
-  font-size: calc(var(--k) * 1em);
-  font-weight: 600;
+  font-size: calc(var(--k) * var(--style-k, 1) * 1em);
+  font-weight: 400;
   line-height: 1.24;
-  letter-spacing: 0.005em;
   max-width: min(90%, 32em);
   text-align: center;
   white-space: pre-line;
   color: var(--sub-1);
   -webkit-font-smoothing: antialiased;
+}
+.line span {
+  display: inline-block;
+  background: rgba(0, 0, 0, 0.55);
+  padding: 0.12em 0.45em 0.15em;
+  border-radius: 0.3em;
+}
+.line[data-track="1"] { color: var(--sub-2); }
+#line2 { --k: 0.86; }
+
+/* "classic": TV captions, monospaced white on a dark block. */
+#player[data-style="classic"] { --style-k: 0.86; }
+#player[data-style="classic"] .line { font-family: ui-monospace, "SF Mono", Menlo, Consolas, "Liberation Mono", monospace; font-weight: 500; }
+#player[data-style="classic"] .line span { background: rgba(0, 0, 0, 0.8); padding: 0.06em 0.4em 0.1em; border-radius: 0.12em; }
+
+/* "outline": no box, semibold with a layered shadow, like Netflix. */
+#player[data-style="outline"] .line {
+  font-weight: 600;
+  letter-spacing: 0.005em;
   text-shadow:
     0 0 2px rgba(0, 0, 0, 0.95),
     0 0 2px rgba(0, 0, 0, 0.95),
     0 1px 3px rgba(0, 0, 0, 0.9),
     0 0 12px rgba(0, 0, 0, 0.55);
 }
-.line[data-track="1"] { color: var(--sub-2); }
-#line2 { --k: 0.86; font-weight: 500; }
+#player[data-style="outline"] #line2 { font-weight: 500; }
+#player[data-style="outline"] .line span { display: inline; background: none; padding: 0; border-radius: 0; }
 .line.long { --k: 0.9; }
 #line2.long { --k: 0.8; }
 .line.xlong { --k: 0.8; max-width: 94%; }
@@ -449,6 +467,19 @@ kbd {
   cursor: pointer;
 }
 #addSubsBtn { width: 100%; margin-bottom: 16px; }
+
+/* Phone in landscape: the subtitles menu goes side by side so nothing hides below the fold. */
+@media (orientation: landscape) and (max-height: 500px) {
+  #subsSheet {
+    width: min(680px, calc(100% - 24px));
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
+    column-gap: 18px;
+    align-items: start;
+  }
+  #subsSheet[hidden] { display: none; }
+  #subsSheet #addSubsBtn { margin-bottom: 0; }
+}
 
 #notice {
   position: absolute;
