@@ -1,0 +1,11 @@
+{
+  "name": "handy",
+  "version": "1.0.0",
+  "private": true,
+  "description": "Tap-anywhere video player with .srt subtitles, made for language learners.",
+  "type": "module",
+  "scripts": {
+    "test": "node --test",
+    "start": "python3 -m http.server 8000"
+  }
+}
