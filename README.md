@@ -28,6 +28,10 @@ Handy remembers your place and the subtitles for every video. When you pick the 
 | --- | --- |
 | Space or K | Pause / play (clicking anywhere on the video works too) |
 | ← → | Back / forward 5 seconds |
+| A / D | Previous / next subtitle |
+| R | Replay the current subtitle (stops at its end) |
+| Shift + ← → | One frame back / forward |
+| C | Subtitles on / off |
 | S | Switch subtitles (first, second, both, off) |
 | , and . | Slower / faster |
 | F | Full screen |

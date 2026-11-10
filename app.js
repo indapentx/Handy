@@ -252,6 +252,8 @@ function openVideo(file, newTracks, input) {
   video.playbackRate = settings.speed;
   video.src = current.url;
   video.load();
+  resetFrameRate();
+  replayStopAt = null;
 
   home.hidden = true;
   player.hidden = false;
@@ -305,6 +307,7 @@ function savePosition() {
 // ---------- playback ----------
 
 function pauseNow() {
+  replayStopAt = null;
   video.pause();
   player.classList.add('paused');
   renderSubs();
@@ -328,9 +331,120 @@ const togglePlay = () => (video.paused || video.ended ? playNow() : pauseNow());
 
 function seekBy(delta) {
   if (!current || !Number.isFinite(video.duration)) return;
+  replayStopAt = null;
   video.currentTime = Math.min(Math.max(0, video.currentTime + delta), Math.max(0, video.duration - 0.05));
   renderSubs();
   updateControls();
+}
+
+// ---------- frame steps ----------
+// Browsers don't tell a page the frame rate, so it is measured from the frames shown while the
+// video plays (the smallest gap between two frames). Until then, 30 frames a second is assumed.
+
+let frameDuration = 1 / 30;
+let frameGaps = [];
+let lastFrameTime = null;
+
+function resetFrameRate() {
+  frameDuration = 1 / 30;
+  frameGaps = [];
+  lastFrameTime = null;
+}
+
+if ('requestVideoFrameCallback' in HTMLVideoElement.prototype) {
+  const watchFrame = (_now, info) => {
+    const gap = lastFrameTime === null ? 0 : info.mediaTime - lastFrameTime;
+    lastFrameTime = info.mediaTime;
+    if (gap > 0.008 && gap < 0.11) {
+      frameGaps.push(gap);
+      if (frameGaps.length > 40) frameGaps.shift();
+      if (frameGaps.length >= 5) frameDuration = Math.min(...frameGaps);
+    }
+    video.requestVideoFrameCallback(watchFrame);
+  };
+  video.requestVideoFrameCallback(watchFrame);
+}
+
+function stepFrame(direction) {
+  if (!current || !Number.isFinite(video.duration)) return;
+  if (!video.paused) pauseNow();
+  replayStopAt = null;
+  video.currentTime = Math.min(Math.max(0, video.currentTime + direction * frameDuration), video.duration);
+}
+
+// ---------- jump between subtitles, replay ----------
+
+let replayStopAt = null; // while replaying a subtitle: the time to pause at
+
+// The subtitle file used for jumping: the one on screen (the first when both show or none).
+function navCues() {
+  if (!tracks.length) return null;
+  const visible = visibleTracks();
+  return tracks[visible.length ? visible[0] : 0].cues;
+}
+
+// Index of the last subtitle that has started by time t, or -1 before the first one.
+function cueIndexAt(cues, t) {
+  let lo = 0;
+  let hi = cues.length - 1;
+  let found = -1;
+  while (lo <= hi) {
+    const mid = (lo + hi) >> 1;
+    if (cues[mid].start <= t + 0.02) {
+      found = mid;
+      lo = mid + 1;
+    } else {
+      hi = mid - 1;
+    }
+  }
+  return found;
+}
+
+function goToCue(cues, index) {
+  video.currentTime = Math.min(cues[index].start + 0.01, Math.max(0, video.duration - 0.05));
+  renderSubs();
+  updateControls();
+}
+
+function jumpSubtitle(direction) {
+  const cues = navCues();
+  if (!current || !Number.isFinite(video.duration)) return;
+  if (!cues) {
+    toast('No subtitles loaded. Tap CC to add an .srt file.');
+    return;
+  }
+  replayStopAt = null;
+  const t = video.currentTime;
+  const i = cueIndexAt(cues, t);
+  let target;
+  if (direction > 0) target = i + 1;
+  // "Previous" from a line that is on screen (or just ended) goes to the line before it;
+  // from a long silence it goes to the last line that was spoken.
+  else target = i >= 0 && t - cues[i].end <= HOLD_SECONDS ? i - 1 : i;
+  if (target >= cues.length) {
+    toast('That was the last subtitle.');
+    return;
+  }
+  goToCue(cues, Math.max(0, target));
+}
+
+function stopReplayAtEnd() {
+  if (replayStopAt === null || video.paused || video.currentTime < replayStopAt - 0.05) return;
+  pauseNow();
+}
+
+// Plays the current subtitle again from its start and pauses at its end.
+function replaySubtitle() {
+  const cues = navCues();
+  if (!current || !Number.isFinite(video.duration)) return;
+  if (!cues) {
+    toast('No subtitles loaded. Tap CC to add an .srt file.');
+    return;
+  }
+  const i = Math.max(0, cueIndexAt(cues, video.currentTime));
+  goToCue(cues, i);
+  replayStopAt = cues[i].end;
+  playNow();
 }
 
 function setSpeed(value) {
@@ -359,6 +473,7 @@ video.addEventListener('play', () => {
   startLoop();
 });
 video.addEventListener('pause', () => {
+  replayStopAt = null;
   player.classList.add('paused');
   renderSubs();
   fitSubs();
@@ -376,6 +491,7 @@ video.addEventListener('seeked', () => {
   updateControls();
 });
 video.addEventListener('timeupdate', () => {
+  stopReplayAtEnd(); // backup for when the drawing loop is throttled
   if (video.paused) {
     renderSubs();
     updateControls();
@@ -418,6 +534,7 @@ video.addEventListener('error', () => {
 
 function frame() {
   rafId = 0;
+  stopReplayAtEnd();
   renderSubs();
   if (!video.paused && !video.ended) rafId = requestAnimationFrame(frame);
 }
@@ -668,7 +785,22 @@ function modeLabel(mode) {
   return tracks[mode === 'one' ? 0 : 1].label;
 }
 
+// One tap: subtitles off, or back to what was showing before.
+function toggleSubtitles() {
+  if (!tracks.length) {
+    toast('No subtitles loaded. Tap CC to add an .srt file.');
+    return;
+  }
+  if (effectiveMode() === 'off') {
+    const back = availableModes().includes(settings.lastOn) && settings.lastOn !== 'off' ? settings.lastOn : 'one';
+    setMode(back);
+  } else {
+    setMode('off');
+  }
+}
+
 function setMode(mode) {
+  if (mode === 'off' && settings.mode !== 'off') settings.lastOn = settings.mode;
   settings.mode = mode;
   saveSettings();
   renderSubtitleButton();
@@ -697,6 +829,8 @@ function renderSubtitleButton() {
   if (tracks.length) label = mode === 'off' ? 'Off' : mode === 'both' ? `${code(0)}+${code(1)}` : code(mode === 'one' ? 0 : 1);
   $('ccLabel').textContent = label;
   $('ccBtn').classList.toggle('dim', mode === 'off');
+  $('subsToggle').setAttribute('aria-pressed', String(mode !== 'off'));
+  $('subsToggle').disabled = !tracks.length;
   player.dataset.size = settings.size;
   player.dataset.style = settings.style;
 }
@@ -909,6 +1043,12 @@ $('openBtn').addEventListener('click', () => chooseFiles(openFiles));
 $('backBtn').addEventListener('click', goHome);
 $('back5').addEventListener('click', () => seekBy(-5));
 $('fwd5').addEventListener('click', () => seekBy(5));
+$('prevSub').addEventListener('click', () => jumpSubtitle(-1));
+$('nextSub').addEventListener('click', () => jumpSubtitle(1));
+$('replaySub').addEventListener('click', replaySubtitle);
+$('frameBack').addEventListener('click', () => stepFrame(-1));
+$('frameFwd').addEventListener('click', () => stepFrame(1));
+$('subsToggle').addEventListener('click', toggleSubtitles);
 $('speedBtn').addEventListener('click', () => toggleSheet(speedSheet));
 $('ccBtn').addEventListener('click', () => toggleSheet(subsSheet));
 $('addSubsBtn').addEventListener('click', () => chooseFiles(loadSubtitleFiles));
@@ -925,6 +1065,7 @@ seek.addEventListener('pointerdown', () => {
   seekByPointer = true;
 });
 seek.addEventListener('input', () => {
+  replayStopAt = null;
   seeking = true;
   video.currentTime = Number(seek.value);
   renderSubs();
@@ -952,7 +1093,24 @@ document.addEventListener('keydown', (e) => {
     case 'ArrowRight':
       if (e.target === seek) return; // the focused slider moves by itself
       e.preventDefault();
-      seekBy(e.key === 'ArrowLeft' ? -5 : 5);
+      if (e.shiftKey) stepFrame(e.key === 'ArrowLeft' ? -1 : 1);
+      else seekBy(e.key === 'ArrowLeft' ? -5 : 5);
+      break;
+    case 'a':
+    case 'A':
+      jumpSubtitle(-1);
+      break;
+    case 'd':
+    case 'D':
+      jumpSubtitle(1);
+      break;
+    case 'r':
+    case 'R':
+      replaySubtitle();
+      break;
+    case 'c':
+    case 'C':
+      toggleSubtitles();
       break;
     case 'f':
     case 'F':

@@ -47,11 +47,14 @@
         <ul>
           <li>Touch anywhere on the video to pause. Tap again to play.</li>
           <li>While paused you get the seek bar, −5 s / +5 s, speed and subtitles (CC).</li>
+          <li>⏮ and ⏭ jump to the previous or next subtitle. The round arrow replays the current subtitle and stops at its end.</li>
+          <li>‹| and |› move one frame back or forward.</li>
+          <li>The speech-bubble button turns subtitles off and on with one tap.</li>
           <li>CC shows one subtitle file, both at once, or none, and sets the subtitle style (Apple, Classic, Outline) and size.</li>
           <li>The eye button (top right, while paused) hides all controls, even when paused. Tapping still pauses and plays. Hold the lock button for a moment to bring the controls back.</li>
           <li>Your place and subtitles are remembered for each video.</li>
           <li>On iPhone, keep the videos and .srt files in an iCloud Drive folder so they show up in the Files app.</li>
-          <li>Computer keys: <kbd>Space</kbd> pause/play, <kbd>←</kbd> <kbd>→</kbd> 5 s, <kbd>S</kbd> subtitles, <kbd>,</kbd> <kbd>.</kbd> speed, <kbd>F</kbd> full screen, <kbd>L</kbd> hide/show controls.</li>
+          <li>Computer keys: <kbd>Space</kbd> pause/play, <kbd>←</kbd> <kbd>→</kbd> 5 s, <kbd>A</kbd> <kbd>D</kbd> previous/next subtitle, <kbd>R</kbd> replay, <kbd>Shift</kbd>+<kbd>←</kbd> <kbd>→</kbd> one frame, <kbd>C</kbd> subtitles on/off, <kbd>S</kbd> switch subtitles, <kbd>,</kbd> <kbd>.</kbd> speed, <kbd>F</kbd> full screen, <kbd>L</kbd> hide/show controls.</li>
         </ul>
       </details>
 
@@ -97,16 +100,31 @@
         <input id="seek" type="range" min="0" max="0" step="any" value="0" aria-label="Position">
         <span id="timeTotal">--:--</span>
       </div>
-      <div class="button-row">
-        <button id="back5" class="icon-btn skip" type="button" aria-label="Back 5 seconds"><svg class="ico"><use href="#i-rew"/></svg><span class="num">5</span></button>
-        <button id="fwd5" class="icon-btn skip" type="button" aria-label="Forward 5 seconds"><svg class="ico"><use href="#i-fwd"/></svg><span class="num">5</span></button>
-        <span class="spacer"></span>
-        <button id="speedBtn" class="pill" type="button" aria-label="Speed">1×</button>
-        <button id="ccBtn" class="pill" type="button" aria-label="Subtitles"><svg class="ico small"><use href="#i-cc"/></svg><span id="ccLabel">CC</span></button>
-        <button id="fsBtn" class="icon-btn" type="button" aria-label="Full screen">
-          <svg class="ico fs-enter"><use href="#i-full"/></svg>
-          <svg class="ico fs-exit"><use href="#i-full-exit"/></svg>
-        </button>
+      <div class="buttons">
+        <div class="button-row nav">
+          <button id="prevSub" class="icon-btn" type="button" aria-label="Previous subtitle"><svg class="ico"><use href="#i-prev"/></svg></button>
+          <button id="replaySub" class="icon-btn" type="button" aria-label="Replay this subtitle"><svg class="ico"><use href="#i-replay"/></svg></button>
+          <button id="nextSub" class="icon-btn" type="button" aria-label="Next subtitle"><svg class="ico"><use href="#i-next"/></svg></button>
+          <span class="spacer"></span>
+          <button id="frameBack" class="icon-btn" type="button" aria-label="One frame back"><svg class="ico"><use href="#i-frame-back"/></svg></button>
+          <button id="frameFwd" class="icon-btn" type="button" aria-label="One frame forward"><svg class="ico"><use href="#i-frame-fwd"/></svg></button>
+        </div>
+        <div class="button-row main">
+          <button id="back5" class="icon-btn skip" type="button" aria-label="Back 5 seconds"><svg class="ico"><use href="#i-rew"/></svg><span class="num">5</span></button>
+          <button id="fwd5" class="icon-btn skip" type="button" aria-label="Forward 5 seconds"><svg class="ico"><use href="#i-fwd"/></svg><span class="num">5</span></button>
+          <span class="spacer"></span>
+          <button id="speedBtn" class="pill" type="button" aria-label="Speed">1×</button>
+          <button id="subsToggle" class="icon-btn" type="button" aria-label="Subtitles on or off" aria-pressed="true">
+            <svg class="ico subs-on"><use href="#i-subs"/></svg>
+            <svg class="ico subs-off"><use href="#i-subs-off"/></svg>
+          </button>
+          <button id="ccBtn" class="pill" type="button" aria-label="Subtitle settings"><svg class="ico small"><use href="#i-cc"/></svg><span id="ccLabel">CC</span></button>
+          <button id="fsBtn" class="icon-btn" type="button" aria-label="Full screen">
+            <svg class="ico fs-enter"><use href="#i-full"/></svg>
+            <svg class="ico fs-exit"><use href="#i-full-exit"/></svg>
+          </button>
+        </div>
+      </div>
       </div>
     </div>
 
@@ -153,6 +171,13 @@
     <symbol id="i-back" viewBox="0 0 24 24"><path d="m15 18-6-6 6-6" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"/></symbol>
     <symbol id="i-rew" viewBox="0 0 24 24"><g fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M3 12a9 9 0 1 0 9-9 9.75 9.75 0 0 0-6.74 2.74L3 8"/><path d="M3 3v5h5"/></g></symbol>
     <symbol id="i-fwd" viewBox="0 0 24 24"><g fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M21 12a9 9 0 1 1-9-9c2.52 0 4.93 1 6.74 2.74L21 8"/><path d="M21 3v5h-5"/></g></symbol>
+    <symbol id="i-prev" viewBox="0 0 24 24"><path d="M19 5.5v13L9 12z" fill="currentColor"/><path d="M6 5v14" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"/></symbol>
+    <symbol id="i-next" viewBox="0 0 24 24"><path d="M5 5.5v13L15 12z" fill="currentColor"/><path d="M18 5v14" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"/></symbol>
+    <symbol id="i-replay" viewBox="0 0 24 24"><g fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 12a9 9 0 1 0 9-9 9.75 9.75 0 0 0-6.74 2.74L3 8"/><path d="M3 3v5h5"/></g><path d="M10 8.8v6.4l5.2-3.2z" fill="currentColor"/></symbol>
+    <symbol id="i-frame-back" viewBox="0 0 24 24"><g fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="m13 6-6 6 6 6"/><path d="M18 6v12"/></g></symbol>
+    <symbol id="i-frame-fwd" viewBox="0 0 24 24"><g fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="m11 6 6 6-6 6"/><path d="M6 6v12"/></g></symbol>
+    <symbol id="i-subs" viewBox="0 0 24 24"><g fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15a2 2 0 0 1-2 2H8l-5 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/><path d="M8 8h8M8 12h5"/></g></symbol>
+    <symbol id="i-subs-off" viewBox="0 0 24 24"><g fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15a2 2 0 0 1-2 2H8l-5 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/><path d="M4 2l16 17"/></g></symbol>
     <symbol id="i-cc" viewBox="0 0 24 24"><g fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="5" width="18" height="14" rx="2"/><path d="M7 15h4M15 15h2M7 11h2M13 11h4"/></g></symbol>
     <symbol id="i-eye-off" viewBox="0 0 24 24"><g fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M9.88 9.88a3 3 0 1 0 4.24 4.24"/><path d="M10.73 5.08A10.43 10.43 0 0 1 12 5c7 0 10 7 10 7a13.16 13.16 0 0 1-1.67 2.68"/><path d="M6.61 6.61A13.53 13.53 0 0 0 2 12s3 7 10 7a9.74 9.74 0 0 0 5.39-1.61"/><path d="M2 2l20 20"/></g></symbol>
     <symbol id="i-lock" viewBox="0 0 24 24"><g fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="11" width="18" height="11" rx="2"/><path d="M7 11V7a5 5 0 0 1 10 0v4"/></g></symbol>

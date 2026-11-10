@@ -1,6 +1,6 @@
 // Keeps a copy of the app so it opens without internet (videos are local files anyway).
 // Network first, so updates arrive right away; the copy is used when offline or slow.
-const CACHE = 'handy-v7';
+const CACHE = 'handy-v8';
 const FILES = [
   './',
   './index.html',

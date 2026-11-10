@@ -9,7 +9,7 @@
   --accent-ink: #1c1500;
   --sub-1: #ffffff;
   --sub-2: #d5dae2;
-  --controls-h: 108px;
+  --controls-h: 156px; /* two button rows; one row on wide screens (see below) */
   color-scheme: dark;
 }
 
@@ -297,6 +297,17 @@ kbd {
 .seek-row span:last-child { text-align: right; }
 .button-row { display: flex; align-items: center; gap: 6px; margin-top: 4px; }
 .spacer { flex: 1; }
+#subsToggle .subs-off, #subsToggle[aria-pressed="false"] .subs-on { display: none; }
+#subsToggle[aria-pressed="false"] .subs-off { display: block; }
+#subsToggle[aria-pressed="false"] { color: var(--muted); }
+.icon-btn:disabled { opacity: 0.35; }
+@media (min-width: 700px) {
+  :root { --controls-h: 108px; }
+  .buttons { display: flex; align-items: center; gap: 18px; }
+  .buttons .nav { flex: none; }
+  .buttons .nav .spacer { flex: none; width: 12px; }
+  .buttons .main { flex: 1; }
+}
 
 .icon-btn {
   position: relative;
